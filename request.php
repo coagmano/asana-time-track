@@ -18,9 +18,8 @@ $projectId = !empty($_GET['projectId']) ? $_GET['projectId'] : '';
 $updateId = !empty($_GET['updateId']) ? $_GET['updateId'] : '';
 
 // initalize
-$asana = new AsanaApi($apiKey); 
+$asana = new AsanaApi($apiKey);
 $result = $asana->getWorkspaces();
-$userId = $asana->getUserId();
 
 // check if everything works fine
 if($asana->getResponseCode() == '200' && $result != '' ){
@@ -29,7 +28,7 @@ if($asana->getResponseCode() == '200' && $result != '' ){
     // WORKSPACES
     // ##############################################################################################
     if($workspaceId == '' && $projectId == ''){
-        
+
         $resultJson = json_decode($result);
         // $resultJson contains an object in json with all projects
         foreach($resultJson->data as $workspace){
@@ -42,16 +41,16 @@ if($asana->getResponseCode() == '200' && $result != '' ){
     // TASKS
     // ##############################################################################################
     if($projectId != ''){
-        
+
         $result = $asana->getTasks($workspaceId);
         $result = json_decode($result);
         $in = false;
-        
+
         // loop through all Tasks of the result, because the Asana-Api gives us also e.g. the completed ones
         foreach($result->data as $task){
-             
+
              $value = $asana->getEstimatedAndWorkedTime($task->name);
-             $taskState = $asana->getOneTask($task->id);
+             $taskState = $asana->getTaskState($task);
 
              $taskName = $value['taskName'];
              $estimatedHours = (!empty($value['estimatedHours'])) ? $value['estimatedHours'].'h' : '0h';
@@ -59,19 +58,19 @@ if($asana->getResponseCode() == '200' && $result != '' ){
              $workedHours = (!empty($value['workedHours'])) ? $value['workedHours'].'h' : '0h';
              $workedMinutes = (!empty($value['workedMinutes'])) ? $value['workedMinutes'].'m' : '0m';
              $workedTime = $value['workedTimeSec'];
-             
+
              // progress bar
              $progressBarPercent = ($estimatedHours*60*1000 + $estimatedMinutes * 1000) / 100;
              if($progressBarPercent != 0){
                 $progressBarPercent = ($workedHours*60*1000 + $workedMinutes * 1000) / $progressBarPercent;
              }
-             
+
              if($progressBarPercent === '') $progressBarPercent = 100;
-             
+
              $progressState = ($progressBarPercent < 80) ? 'progress-success' : (($progressBarPercent < 100 ) ? 'progress-warning' : 'progress-danger');
-             
-             // task must be active and your own
-             if($taskState['completed'] || $taskState['assignee'] != $userId || $taskName == '') {
+
+             // task must be active
+             if($taskState['completed'] || $taskName == '') {
                 continue;
              } else {
                 echo '<tr>'
@@ -96,34 +95,34 @@ if($asana->getResponseCode() == '200' && $result != '' ){
                         </button>
                       </td>'
                     .'</tr>';
-                    
+
                 // at least one assigend task is found
-                $in = true;    
+                $in = true;
              }
          }
 
          // no assigned task is found
          if(!$in) echo '<tr><td colspan="6">Sorry, no assigned tasks are found...</td></tr>';
-         
+
          echo '<tr class="worked_time_line"><td colspan="4"><td class="text_align right">Worked today:</td><td class="worked_time_today">0 hours 0 minutes</td></tr>';
-                 
-        
+
+
     }
-    
+
     // ##############################################################################################
     // UPDATE
     // ##############################################################################################
     if($updateId != ''){
-        
+
         $workedHours = $_GET['workedHours'];
         $workedMinutes = $_GET['workedMinutes'];
         $estimatedHours = $_GET['estimatedHours'];
         $estimatedMinutes = $_GET['estimatedMinutes'];
         $currentTaskName = $_GET['taskName'];
-        
+
         $asana->updateTask($updateId, $workedHours, $workedMinutes, $estimatedHours, $estimatedMinutes,  $currentTaskName);
     }
-    
+
 
 } else {
     echo '<p>ERROR: Something went wrong! Maybe your asana api key does not fit.<br/> Or you have no internet connection.</p>';
